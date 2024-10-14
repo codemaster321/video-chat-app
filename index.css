@@ -1,0 +1,98 @@
+*,
+*::before,
+*::after {
+  margin: none;
+  padding: none;
+  box-sizing: border-box;
+}
+
+#screenshare {
+  width: 100vh;
+}
+
+body {
+  background-color: darkslategrey;
+  position: relative;
+  overflow-x: hidden;
+}
+
+#chat {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+}
+
+.chat-window {
+  opacity: 0;
+  visibility: hidden;
+  z-index: 2;
+  transform: translateX(100%);
+  transition: all 0.5s ease;
+  position: absolute;
+  width: 20%;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  background-color: aliceblue;
+  display: flex;
+  flex-direction: column;
+}
+.chat-window-active {
+  transform: translateX(0%);
+  opacity: 1;
+  visibility: visible;
+}
+#form {
+  background: rgba(0, 0, 0, 0.15);
+  padding: 0.25rem;
+  width: 100%; /* Full width inside the chat window */
+
+  display: flex;
+  height: 3rem;
+  backdrop-filter: blur(100px);
+  margin-top: 1rem;
+  z-index: 3;
+}
+#input {
+  border: none;
+  padding: 0 1rem;
+  flex-grow: 1;
+  border-radius: 2rem;
+  margin: 0.25rem;
+  flex: 1;
+}
+#input:focus {
+  outline: none;
+}
+
+#form > button {
+  background: #333;
+  border: none;
+  padding: 0 1rem;
+  margin: 0.25rem;
+  border-radius: 3px;
+  outline: none;
+  color: #fff;
+}
+#messages {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+#messages > li {
+  padding: 0.5rem 1rem;
+  overflow-wrap: break-word;
+}
+#messages > li:nth-child(odd) {
+  background: #efefef;
+}
+#messages > li:nth-child(even) {
+  background: #888383;
+}
+
+.chat-container {
+  flex: 1; /* Takes up the remaining space above the form */
+  overflow-y: auto; /* Enables vertical scrolling */
+  padding: 1rem;
+}
