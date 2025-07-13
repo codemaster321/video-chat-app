@@ -31,30 +31,33 @@ const io = socketIO(server, {
 });
 
 io.on("connection", (socket) => {
-  console.log("A user connected:", socket.id);
+  socket.on("join-room", (roomId) => {
+    socket.join(roomId);
+    console.log(`${socket.id} joined room ${roomId}`);
 
-  socket.on("offer", (data) => {
-    console.log("Received offer", data);
-    socket.broadcast.emit("offer", data);
+    const room = io.sockets.adapter.rooms.get(roomId);
+    if (room && room.size === 2) {
+      io.to(roomId).emit("ready");
+    }
   });
 
-  socket.on("answer", (data) => {
-    console.log("Received answer", data);
-    socket.broadcast.emit("answer", data);
+  socket.on("offer", ({ offer, room }) => {
+    socket.to(room).emit("offer", { offer });
   });
 
-  socket.on("ice-candidate", (data) => {
-    console.log("Received ICE candidate:", data);
-    socket.broadcast.emit("ice-candidate", data);
+  socket.on("answer", ({ answer, room }) => {
+    socket.to(room).emit("answer", { answer });
+  });
+
+  socket.on("ice-candidate", ({ candidate, room }) => {
+    socket.to(room).emit("ice-candidate", { candidate });
   });
 
   socket.on("disconnect", () => {
-    console.log("A user disconnected:", socket.id);
     socket.broadcast.emit("leave");
   });
 
   socket.on("chat message", (msg) => {
-    console.log("message: " + msg);
     io.emit("chat message", msg);
   });
 });

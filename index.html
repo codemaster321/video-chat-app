@@ -1,35 +1,46 @@
+<!DOCTYPE html>
 <html>
   <head>
     <title>Local video playback</title>
     <link rel="stylesheet" href="index.css" />
   </head>
   <body>
-    <div style="display: inline-block">
-      <video id="localVideo" autoplay playsinline controls="false"></video>
-      <h3>Local Stream</h3>
+    <div class="video-container">
+      <div class="video-box">
+        <video id="localVideo" autoplay playsinline></video>
+        <h3>Local Stream</h3>
+      </div>
+      <div class="video-box">
+        <video id="remoteVideo" autoplay playsinline></video>
+        <h3>Remote Stream</h3>
+      </div>
     </div>
-    <div style="display: inline-block">
-      <video id="remoteVideo" autoplay playsinline></video>
-      <h3>Remote Stream</h3>
-    </div>
-    <video id="screenshare" autoplay></video>
 
-    <button id="makeCallButton">Make Call</button>
-    <button id="hangupButton">Hangup</button>
-    <button id="screenShareButton">Share Screen</button>
-    <button id="chat">Chat</button>
+    <!-- <div class="video-box full-width">
+      <video id="screenshare" autoplay playsinline></video>
+      <h3>Screenshare</h3>
+    </div> -->
+
+    <div class="controls">
+      <button id="makeCallButton">Make Call</button>
+      <input type="text" id="roomInput" placeholder="Enter Code to Join" />
+      <button id="joinCallButton">Join Call</button>
+      <button id="hangupButton">Hangup</button>
+      <button id="screenShareButton">Share Screen</button>
+      <button id="chat">Chat</button>
+    </div>
 
     <div class="chat-window">
       <div class="chat-container">
         <ul id="messages"></ul>
       </div>
       <form id="form" action="">
-        <input id="input" autocomplete="off" /><button>Send</button>
+        <input id="input" autocomplete="off" placeholder="Type a message..." />
+        <button>Send</button>
       </form>
     </div>
-  </body>
-  <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
-  <script src="/socket.io/socket.io.js"></script>
 
-  <script src="index.js"></script>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script src="index.js"></script>
+  </body>
 </html>

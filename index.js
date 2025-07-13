@@ -7,6 +7,8 @@ const chat = document.getElementById("chat");
 const chatWindow = document.querySelector(".chat-window");
 const input = document.getElementById("input");
 
+let roomId = null;
+let isCaller = false;
 let localStream;
 let remoteStream = new MediaStream(); // Create a new MediaStream for the remote video
 let peerConnection;
@@ -48,69 +50,25 @@ function createPeerConnection() {
   localStream.getTracks().forEach((track) => {
     peerConnection.addTrack(track, localStream);
   });
-
-  // Handle remote stream tracks
   peerConnection.ontrack = (event) => {
-    event.streams[0].getTracks().forEach((track) => {
+    const stream = event.streams[0];
+    stream.getTracks().forEach((track) => {
       remoteStream.addTrack(track);
     });
     remoteVideo.srcObject = remoteStream;
-    console.log(remoteVideo);
   };
 
-  // Handle ICE candidate generation
+  // Start a call by creating an offer
+
   peerConnection.onicecandidate = (event) => {
     if (event.candidate) {
-      socket.emit("ice-candidate", event.candidate);
+      socket.emit("ice-candidate", {
+        candidate: event.candidate,
+        room: roomId,
+      });
     }
   };
 }
-
-socket.on("chat message", (msg) => {
-  console.log("message: " + msg);
-  const newMessage = document.createElement("li");
-  newMessage.textContent = msg;
-  document.getElementById("messages").append(newMessage);
-});
-
-// Start a call by creating an offer
-async function makeCall() {
-  createPeerConnection();
-  const offer = await peerConnection.createOffer();
-  await peerConnection.setLocalDescription(offer);
-  socket.emit("offer", offer);
-}
-
-// Handle incoming offer from remote peer
-socket.on("offer", async (offer) => {
-  createPeerConnection();
-  await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-  const answer = await peerConnection.createAnswer();
-  await peerConnection.setLocalDescription(answer);
-  socket.emit("answer", answer);
-});
-
-// Handle incoming answer from remote peer
-socket.on("answer", async (answer) => {
-  await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-});
-
-// Handle incoming ICE candidate from remote peer
-socket.on("ice-candidate", async (candidate) => {
-  try {
-    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-  } catch (error) {
-    console.error("Error adding ICE candidate:", error);
-  }
-});
-
-socket.on("leave", () => {
-  console.log("Remote peer left, cleaning up connection.");
-  stopLocalStream();
-  closePeerConnection();
-  localVideo.srcObject = null;
-  remoteVideo.srcObject = null;
-});
 
 // Stop all local media tracks
 function stopLocalStream() {
@@ -140,9 +98,31 @@ async function startCapture() {
     const sender = peerConnection
       .getSenders()
       .find((s) => s.track.kind === "video");
+    console.log(peerConnection.getSenders());
     sender.replaceTrack(screenTrack);
 
-    localVideo.srcObject = captureStream; // Show screen locally
+    remoteVideo.srcObject = captureStream;
+
+    screenTrack.onended = async () => {
+      console.log("Screen sharing stopped");
+
+      try {
+        // Replace back with webcam video
+        const webcamTrack = localStream.getVideoTracks()[0];
+        if (webcamTrack) {
+          sender.replaceTrack(webcamTrack);
+        }
+
+        // Restore local video feed
+        localVideo.srcObject = localStream;
+
+        // Clear screenShare element
+        remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
+        remoteVideo.srcObject = localStream;
+      } catch (err) {
+        console.error("Error restoring webcam after screen share:", err);
+      }
+    };
 
     // Listen for when the user stops sharing the screen
   } catch (err) {
@@ -150,9 +130,77 @@ async function startCapture() {
   }
 }
 
-init();
+async function makeCall() {
+  createPeerConnection();
 
-document.getElementById("makeCallButton").addEventListener("click", makeCall);
+  if (!localVideo && !peerConnection) init();
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(offer);
+  socket.emit("offer", { offer, room: roomId });
+  console.log("Offer sent:", offer);
+}
+
+// Handle incoming offer from remote peer
+socket.on("offer", async ({ offer }) => {
+  createPeerConnection();
+  await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+  const answer = await peerConnection.createAnswer();
+  await peerConnection.setLocalDescription(answer);
+  socket.emit("answer", { answer, room: roomId });
+});
+
+socket.on("answer", async ({ answer }) => {
+  await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+});
+
+socket.on("ready", () => {
+  if (isCaller) {
+    makeCall();
+  }
+});
+
+socket.on("leave", () => {
+  console.log("Remote peer left, cleaning up connection.");
+  stopLocalStream();
+  closePeerConnection();
+  localVideo.srcObject = null;
+  remoteVideo.srcObject = null;
+
+  remoteStream = new MediaStream(); // Reset for next time
+});
+
+socket.on("ice-candidate", async ({ candidate }) => {
+  try {
+    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+  } catch (error) {
+    console.error("Error adding ICE candidate:", error);
+  }
+});
+
+socket.on("chat message", (msg) => {
+  console.log("message: " + msg);
+  const newMessage = document.createElement("li");
+  newMessage.textContent = msg;
+  document.getElementById("messages").append(newMessage);
+});
+
+document.getElementById("makeCallButton").addEventListener("click", () => {
+  roomId = Math.random().toString(36).substring(2, 8);
+  alert(`Share this code with your friend: ${roomId}`);
+  isCaller = true;
+
+  socket.emit("join-room", roomId);
+});
+
+document.getElementById("joinCallButton").addEventListener("click", () => {
+  const input = document.getElementById("roomInput").value.trim();
+  if (!input) return alert("Please enter a valid code.");
+  roomId = input;
+  isCaller = false;
+
+  socket.emit("join-room", roomId);
+});
+
 document.getElementById("hangupButton").addEventListener("click", () => {
   stopLocalStream();
   closePeerConnection();
@@ -177,3 +225,5 @@ document.getElementById("form").addEventListener("submit", (e) => {
     chatWindow.scrollTop = chatWindow.scrollHeight;
   }
 });
+
+init();
